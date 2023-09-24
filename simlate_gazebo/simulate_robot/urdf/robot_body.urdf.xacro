@@ -23,22 +23,22 @@
     <xacro:property name="M_PI" value="3.1415926535897931" />
 
     <!-- Main body length, width, height and mass -->
-    <!-- <xacro:property name="base_mass"        value="0.5" /> 
+    <!-- <xacro:property name="base_mass"        value="0.5" />
     <xacro:property name="base_link_radius" value="0.13"/>
     <xacro:property name="base_link_length" value="0.005"/> -->
-    <xacro:property name="base_mass"        value="0.5" /> 
+    <xacro:property name="base_mass"        value="0.5" />
     <xacro:property name="base_link_radius" value="0.3"/>
     <xacro:property name="base_link_length" value="0.005"/>
 
     <xacro:property name="motor_x" value="-0.05"/>
 
     <!-- Caster radius and mass -->
-    <xacro:property name="caster_radius"          value="0.03" /> 
-    <xacro:property name="caster_mass"            value="0.01" /> 
+    <xacro:property name="caster_radius"          value="0.03" />
+    <xacro:property name="caster_mass"            value="0.01" />
     <xacro:property name="caster_joint_origin_x"  value="-0.2" />
 
     <!-- Wheel radius, height and mass -->
-    <xacro:property name="wheel_radius" value="0.06" /> 
+    <xacro:property name="wheel_radius" value="0.06" />
     <xacro:property name="wheel_height" value="0.03" />
     <xacro:property name="wheel_mass"   value="0.1" />
 
@@ -48,7 +48,7 @@
         <inertial>
             <mass value="${m}" />
             <inertia ixx="${2*m*r*r/5}" ixy="0" ixz="0"
-                iyy="${2*m*r*r/5}" iyz="0" 
+                iyy="${2*m*r*r/5}" iyz="0"
                 izz="${2*m*r*r/5}" />
         </inertial>
     </xacro:macro>
@@ -58,7 +58,7 @@
             <mass value="${m}" />
             <inertia ixx="${m*(3*r*r+h*h)/12}" ixy = "0" ixz = "0"
                 iyy="${m*(3*r*r+h*h)/12}" iyz = "0"
-                izz="${m*r*r/2}" /> 
+                izz="${m*r*r/2}" />
         </inertial>
     </xacro:macro>
 
@@ -67,7 +67,7 @@
             <mass value="${m}" />
             <inertia ixx="${m*(h*h+d*d)/12}" ixy = "0" ixz = "0"
                 iyy="${m*(w*w+d*d)/12}" iyz = "0"
-                izz="${m*(w*w+h*h)/12}" /> 
+                izz="${m*(w*w+h*h)/12}" />
         </inertial>
     </xacro:macro>
 
@@ -76,7 +76,7 @@
         <!-- lr: left, right -->
         <link name="wheel_${lr}_link">
             <visual>
-                <origin xyz="0 0 0" rpy="${M_PI/2} 0  0 " /> 
+                <origin xyz="0 0 0" rpy="${M_PI/2} 0  0 " />
                 <geometry>
                     <cylinder length="${wheel_height}" radius="${wheel_radius}" />
                 </geometry>
@@ -98,7 +98,7 @@
         <joint name="base_to_wheel_${lr}_joint" type="continuous">
             <parent link="base_link"/>
             <child link="wheel_${lr}_link"/>
-            <origin xyz="${motor_x} ${translateY * base_link_radius} 0" rpy="0 0 0" /> 
+            <origin xyz="${motor_x} ${translateY * base_link_radius} 0" rpy="0 0 0" />
             <axis xyz="0 1 0" rpy="0  0" />
         </joint>
 
@@ -118,18 +118,18 @@
         <!-- fb: front, back -->
         <link name="${fb}_caster_link">
             <visual>
-                <origin xyz="0 0 0 " rpy="0 0 0" /> 
+                <origin xyz="0 0 0 " rpy="0 0 0" />
                 <geometry>
                     <sphere radius="${caster_radius}" />
                 </geometry>
                 <material name="White" />
-            </visual>  
+            </visual>
             <collision>
                 <geometry>
                     <sphere radius="${caster_radius}" />
                 </geometry>
-                <origin xyz="0 0 0 " rpy="0 0 0" /> 
-            </collision>      
+                <origin xyz="0 0 0 " rpy="0 0 0" />
+            </collision>
             <sphere_inertial_matrix  m="${caster_mass}" r="${caster_radius}" />
         </link>
 
@@ -144,7 +144,7 @@
         </joint>
     </xacro:macro>
 
-    
+
     <!-- BASE-FOOTPRINT -->
     <!-- base_footprint is a fictitious link(frame) that is on the ground right below base_link origin -->
     <xacro:macro name="robot_body">
@@ -180,7 +180,7 @@
                 <geometry>
                     <cylinder length="${base_link_length}" radius="${base_link_radius}"/>
                 </geometry>
-            </collision>   
+            </collision>
         </link>
         <gazebo reference="base_link">
             <material>Gazebo/Red</material>
@@ -252,11 +252,11 @@
                 <wheelTorque>30</wheelTorque>
                 <wheelAcceleration>1.8</wheelAcceleration>
                 <commandTopic>cmd_vel</commandTopic>
-                <odometryFrame>odom</odometryFrame> 
-                <odometryTopic>odom</odometryTopic> 
+                <odometryFrame>odom</odometryFrame>
+                <odometryTopic>odom</odometryTopic>
                 <robotBaseFrame>base_footprint</robotBaseFrame>
             </plugin>
-        </gazebo> 
+        </gazebo>
 
     </xacro:macro>
 </robot>

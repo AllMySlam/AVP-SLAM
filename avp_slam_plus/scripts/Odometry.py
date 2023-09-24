@@ -28,7 +28,7 @@ Used for wheel encoder odometry simulation.
 Subscribe ideal control command from /ideal_cmd_vel which is sent from controller and publish noisy command to /cmd_vel for Gazebo simulation.
 '''
 
-# 一个helper,限制方向在固定的度数区间中:-pi~pi
+# helper functiono, strict yaw in : -pi~pi
 def wrap2pi(yaw):
     if yaw < -np.pi:
         yaw += 2*np.pi
@@ -65,7 +65,7 @@ def odom_callback(data):
     global id
     global pre_time
     now = rospy.get_time()
-    
+
     dt = now - pre_time
 
     # reset dt if it is unreasonably large
@@ -74,11 +74,11 @@ def odom_callback(data):
 
     pre_time = now
     theta = previous_pose[2]
-    
+
     v = v_actual
     w = w_actual
     o_R = np.array([[(odom_c1* abs(v)+odom_c2*abs(w))**2, 0], [0, (odom_c3* abs(v)+odom_c4*abs(w))**2]]) + 1e-10
-    # 这里再次加了一次噪声，来模拟真实运动的噪声
+    # add noise again, simulate actual motion noise.
     o_rand = np.random.multivariate_normal([v, w], o_R)
     v_odom = o_rand[0]
     w_odom = o_rand[1]
@@ -101,18 +101,18 @@ def odom_callback(data):
     new_pose[2] = wrap2pi(new_pose[2])
 
     #TODO: cov is temporalily set to be fixed, what is use of cov in Graph Optimization?
-    # Output in g2o format 
+    # Output in g2o format
     vertex_output = "VERTEX_SE2" + " " +  str(now) + " " + str(new_pose[0]) + " " + str(new_pose[1]) + " " + str(new_pose[2])
     edge_output = "EDGE_SE2" + " " + str(pre_time) + " " + str(now) + " " + str(delta_v) + " " + str(0) + " " + str(delta_theta) \
         + " " + str(cov[0, 0]) + " " + str(cov[0, 1]) + " " + str(cov[0, 2]) + " " + str(cov[1, 1]) + " " + str(cov[1, 2]) + " " + str(cov[2, 2])
-    
+
     previous_pose = new_pose
 
     # Make sure that a vertex published before edges. For the purpose of graph optimization
     if(id > 0):
-        edge_pub.publish(edge_output)    
+        edge_pub.publish(edge_output)
         vertex_pub.publish(vertex_output)
-    else: 
+    else:
         vertex_pub.publish(vertex_output)
         id += 1
 

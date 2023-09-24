@@ -1,4 +1,4 @@
-//liuguitao created in 2021.12.16
+// liuguitao created in 2021.12.16
 
 #include <geometry_msgs/PoseWithCovarianceStamped.h>
 #include <nav_msgs/Odometry.h>
@@ -81,31 +81,31 @@ Eigen::Affine3f transWorldCurrent;
 
 //   transform point cloud according to pose
 pcl::PointCloud<PointType>::Ptr transformPointCloud(pcl::PointCloud<PointType>::Ptr cloudIn, Eigen::Affine3f& transCur)
-    {
-        pcl::PointCloud<PointType>::Ptr cloudOut(new pcl::PointCloud<PointType>());
+{
+    pcl::PointCloud<PointType>::Ptr cloudOut(new pcl::PointCloud<PointType>());
 
-        int cloudSize = cloudIn->size();
-        cloudOut->resize(cloudSize);
+    int cloudSize = cloudIn->size();
+    cloudOut->resize(cloudSize);
 
-        for (int i = 0; i < cloudSize; ++i)
-        {
-            const auto &pointFrom = cloudIn->points[i];
-            cloudOut->points[i].x = transCur(0,0) * pointFrom.x + transCur(0,1) * pointFrom.y + transCur(0,2) * pointFrom.z + transCur(0,3);
-            cloudOut->points[i].y = transCur(1,0) * pointFrom.x + transCur(1,1) * pointFrom.y + transCur(1,2) * pointFrom.z + transCur(1,3);
-            cloudOut->points[i].z = transCur(2,0) * pointFrom.x + transCur(2,1) * pointFrom.y + transCur(2,2) * pointFrom.z + transCur(2,3);
-            cloudOut->points[i].r = pointFrom.r;
-            cloudOut->points[i].g = pointFrom.g;
-            cloudOut->points[i].b = pointFrom.b;
-
-        }
-        return cloudOut;
+    for (int i = 0; i < cloudSize; ++i) {
+        const auto& pointFrom = cloudIn->points[i];
+        cloudOut->points[i].x =
+            transCur(0, 0) * pointFrom.x + transCur(0, 1) * pointFrom.y + transCur(0, 2) * pointFrom.z + transCur(0, 3);
+        cloudOut->points[i].y =
+            transCur(1, 0) * pointFrom.x + transCur(1, 1) * pointFrom.y + transCur(1, 2) * pointFrom.z + transCur(1, 3);
+        cloudOut->points[i].z =
+            transCur(2, 0) * pointFrom.x + transCur(2, 1) * pointFrom.y + transCur(2, 2) * pointFrom.z + transCur(2, 3);
+        cloudOut->points[i].r = pointFrom.r;
+        cloudOut->points[i].g = pointFrom.g;
+        cloudOut->points[i].b = pointFrom.b;
     }
-
+    return cloudOut;
+}
 
 //   feature extration
 //   feature registration
 //   compute robot's poses
-void cameraCloudHandler(const sensor_msgs::PointCloud2ConstPtr &cameraCloudMsg)
+void cameraCloudHandler(const sensor_msgs::PointCloud2ConstPtr& cameraCloudMsg)
 {
     pcl::PointCloud<pcl::PointXYZRGB> cameraCloudIn;
     pcl::fromROSMsg(*cameraCloudMsg, cameraCloudIn);
@@ -115,14 +115,14 @@ void cameraCloudHandler(const sensor_msgs::PointCloud2ConstPtr &cameraCloudMsg)
     //   for real scene,should adapt deep learning method,detecting valid feature point
     currentFeatureCloud->clear();
     for (size_t i = 0; i < cameraCloudIn.points.size(); i++) {
-            PointType pi = cameraCloudIn.points[i];
-            int       r  = int(pi.r);
-            int       g  = int(pi.g);
-            int       b  = int(pi.b);
-            if (r < invalidColorThresh && b < invalidColorThresh && g < invalidColorThresh) {
-                continue;
-            }
-            currentFeatureCloud->push_back(pi);
+        PointType pi = cameraCloudIn.points[i];
+        int       r  = int(pi.r);
+        int       g  = int(pi.g);
+        int       b  = int(pi.b);
+        if (r < invalidColorThresh && b < invalidColorThresh && g < invalidColorThresh) {
+            continue;
+        }
+        currentFeatureCloud->push_back(pi);
     }
 
     //  broadcast  feature point cloud of current frame
@@ -134,104 +134,107 @@ void cameraCloudHandler(const sensor_msgs::PointCloud2ConstPtr &cameraCloudMsg)
 
     // only number of point of current frame is sufficient ,compute pose
     if (currentFeatureCloud->points.size() < 10)
-            return;
+        return;
 
     //  broadcast prior  global map information
     if (globalMapLoad) {
-            sensor_msgs::PointCloud2 cameraCloudGlobalMapMsg;
-            pcl::toROSMsg(*globalFeatureCloud, cameraCloudGlobalMapMsg);
-            cameraCloudGlobalMapMsg.header.stamp    = ros::Time::now();
-            cameraCloudGlobalMapMsg.header.frame_id = "/map";
-            pubGlobalFeature.publish(cameraCloudGlobalMapMsg);
+        sensor_msgs::PointCloud2 cameraCloudGlobalMapMsg;
+        pcl::toROSMsg(*globalFeatureCloud, cameraCloudGlobalMapMsg);
+        cameraCloudGlobalMapMsg.header.stamp    = ros::Time::now();
+        cameraCloudGlobalMapMsg.header.frame_id = "/map";
+        pubGlobalFeature.publish(cameraCloudGlobalMapMsg);
     }
 
     if (!systemInitial) {
-            return;
+        return;
     }
 
     // compute robot's pose with method of ndt
     if (useNDT) {
-            pcl::NormalDistributionsTransform<PointType, PointType> ndt;
-            ndt.setTransformationEpsilon(ndtTransformationEpsilon);
-            ndt.setResolution(ndtResolution);
-            ndt.setInputSource(currentFeatureCloud);
-            ndt.setInputTarget(globalFeatureCloud);
-            pcl::PointCloud<PointType>::Ptr transCurrentCloudInWorld(new pcl::PointCloud<PointType>());
-            ndt.align(*transCurrentCloudInWorld, transWorldCurrent.matrix());
+        pcl::NormalDistributionsTransform<PointType, PointType> ndt;
+        ndt.setTransformationEpsilon(ndtTransformationEpsilon);
+        ndt.setResolution(ndtResolution);
+        ndt.setInputSource(currentFeatureCloud);
+        ndt.setInputTarget(globalFeatureCloud);
+        pcl::PointCloud<PointType>::Ptr transCurrentCloudInWorld(new pcl::PointCloud<PointType>());
+        ndt.align(*transCurrentCloudInWorld, transWorldCurrent.matrix());
 
-            //  initial registration should be strictly
-            if (!initPose) {
-                if (ndt.getFitnessScore() > 0.1)
-                    return;
-            }
-            else {
-                initPose = true;
-            }
-            if (ndt.hasConverged() == false || ndt.getFitnessScore() > ndtFitnessScoreThresh) {
-                std::cout << "ndt localization failed    the score is   " << ndt.getFitnessScore() << std::endl;
+        //  initial registration should be strictly
+        if (!initPose) {
+            if (ndt.getFitnessScore() > 0.1)
                 return;
-            }
-            else
-                transWorldCurrent = ndt.getFinalTransformation();
+        }
+        else {
+            initPose = true;
+        }
+        if (ndt.hasConverged() == false || ndt.getFitnessScore() > ndtFitnessScoreThresh) {
+            std::cout << "ndt localization failed    the score is   " << ndt.getFitnessScore() << std::endl;
+            return;
+        }
+        else
+            transWorldCurrent = ndt.getFinalTransformation();
     }
 
     //   compute robot's pose with method of icp
     if (useICP) {
-            static pcl::IterativeClosestPoint<PointType, PointType> icp;
-            icp.setMaxCorrespondenceDistance(icpMaxCorrespondenceDistance);
-            icp.setMaximumIterations(icpMaximumIterations);
-            icp.setTransformationEpsilon(icpTransformationEpsilon);
-            icp.setEuclideanFitnessEpsilon(icpEuclideanFitnessEpsilon);
+        static pcl::IterativeClosestPoint<PointType, PointType> icp;
+        icp.setMaxCorrespondenceDistance(icpMaxCorrespondenceDistance);
+        icp.setMaximumIterations(icpMaximumIterations);
+        icp.setTransformationEpsilon(icpTransformationEpsilon);
+        icp.setEuclideanFitnessEpsilon(icpEuclideanFitnessEpsilon);
 
-            icp.setInputSource(currentFeatureCloud);
-            icp.setInputTarget(globalFeatureCloud);
-            pcl::PointCloud<PointType>::Ptr transCurrentCloudInWorld(new pcl::PointCloud<PointType>());
-            icp.align(*transCurrentCloudInWorld, transWorldCurrent.matrix());
-            //   initial registration should be strictly
-            if (!initPose) {
-                if (icp.getFitnessScore() > 0.1)
-                    return;
-            }
-            else {
-                initPose = true;
-            }
-
-            if (icp.hasConverged() == false || icp.getFitnessScore() > icpFitnessScoreThresh) {
-                std::cout << "ICP locolization failed    the score is   " << icp.getFitnessScore() << std::endl;
+        icp.setInputSource(currentFeatureCloud);
+        icp.setInputTarget(globalFeatureCloud);
+        pcl::PointCloud<PointType>::Ptr transCurrentCloudInWorld(new pcl::PointCloud<PointType>());
+        icp.align(*transCurrentCloudInWorld, transWorldCurrent.matrix());
+        //   initial registration should be strictly
+        if (!initPose) {
+            if (icp.getFitnessScore() > 0.1)
                 return;
-            }
-            else
-                transWorldCurrent = icp.getFinalTransformation();
+        }
+        else {
+            initPose = true;
+        }
+
+        if (icp.hasConverged() == false || icp.getFitnessScore() > icpFitnessScoreThresh) {
+            std::cout << "ICP locolization failed    the score is   " << icp.getFitnessScore() << std::endl;
+            return;
+        }
+        else
+            transWorldCurrent = icp.getFinalTransformation();
     }
 
     pcl::getTranslationAndEulerAngles(transWorldCurrent, currentX, currentY, currentZ, currentRoll, currentPitch,
                                       currentYaw);
 
     if (currentPitch > 10)
-            currentPitch = 0;
+        currentPitch = 0;
     transWorldCurrent = pcl::getTransformation(currentX, currentY, currentZ, currentRoll, currentPitch, currentYaw);
 
     tf::TransformBroadcaster tfMap2Camera;
-    tf::Transform mapToCamera = tf::Transform(tf::createQuaternionFromRPY(currentRoll,currentPitch,currentYaw), tf::Vector3(currentX,currentY,currentZ));
+    tf::Transform mapToCamera = tf::Transform(tf::createQuaternionFromRPY(currentRoll, currentPitch, currentYaw),
+                                              tf::Vector3(currentX, currentY, currentZ));
     tfMap2Camera.sendTransform(tf::StampedTransform(mapToCamera, ros::Time::now(), "/map", "/camera0_link"));
 
     // broacast pose of robot
-    geometry_msgs::Quaternion cameraPoseQuat=tf::createQuaternionMsgFromRollPitchYaw(currentRoll,currentPitch,currentYaw);
+    geometry_msgs::Quaternion cameraPoseQuat =
+        tf::createQuaternionMsgFromRollPitchYaw(currentRoll, currentPitch, currentYaw);
     nav_msgs::Odometry odomAftMapped;
-	odomAftMapped.header.frame_id = "/map";
-	odomAftMapped.child_frame_id = "/camera0_link";
-	odomAftMapped.header.stamp = ros::Time::now();
-	odomAftMapped.pose.pose.orientation.x = cameraPoseQuat.x;
-	odomAftMapped.pose.pose.orientation.y = cameraPoseQuat.y;
-	odomAftMapped.pose.pose.orientation.z = cameraPoseQuat.z;
-	odomAftMapped.pose.pose.orientation.w = cameraPoseQuat.w;
-	odomAftMapped.pose.pose.position.x = currentX;
-	odomAftMapped.pose.pose.position.y = currentY;
-	odomAftMapped.pose.pose.position.z = currentZ;
-	pubCurrentPose.publish(odomAftMapped);
+    odomAftMapped.header.frame_id         = "/map";
+    odomAftMapped.child_frame_id          = "/camera0_link";
+    odomAftMapped.header.stamp            = ros::Time::now();
+    odomAftMapped.pose.pose.orientation.x = cameraPoseQuat.x;
+    odomAftMapped.pose.pose.orientation.y = cameraPoseQuat.y;
+    odomAftMapped.pose.pose.orientation.z = cameraPoseQuat.z;
+    odomAftMapped.pose.pose.orientation.w = cameraPoseQuat.w;
+    odomAftMapped.pose.pose.position.x    = currentX;
+    odomAftMapped.pose.pose.position.y    = currentY;
+    odomAftMapped.pose.pose.position.z    = currentZ;
+    pubCurrentPose.publish(odomAftMapped);
 
-    std::cout<<"now robot is in x "<<currentX<< " y "<< currentY<< "  z  "<<currentZ<<std::endl;
-    std::cout<<" now robot is in  roll "<<currentRoll<<"  pitch "<<currentPitch<<"  yaw  "<<currentYaw<<std::endl;
+    std::cout << "now robot is in x " << currentX << " y " << currentY << "  z  " << currentZ << std::endl;
+    std::cout << " now robot is in  roll " << currentRoll << "  pitch " << currentPitch << "  yaw  " << currentYaw
+              << std::endl;
 
     //   transform  point cloud from current  coordinate to world coordinate
     *currentFeatureCloudInWorld = *transformPointCloud(currentFeatureCloud, transWorldCurrent);
@@ -252,45 +255,46 @@ void systemInit()
 }
 
 // load prior global map
-void loadMap(){
+void loadMap()
+{
     globalFeatureCloud->clear();
-    std::cout<<"load map begin ******************"<<std::endl;
+    std::cout << "load map begin ******************" << std::endl;
     pcl::io::loadPCDFile(mapSaveLocation, *globalFeatureCloud);
-    std::cout<<"load map over ******************"<<std::endl;
-    globalMapLoad=true;
-
+    std::cout << "load map over ******************" << std::endl;
+    globalMapLoad = true;
 }
-
 
 // get initial pose from outer program ;For example ,judging position of robot from gps or mannual marker
-void initposeHandler(const geometry_msgs::PoseWithCovarianceStampedConstPtr &initpose){
-         double tempw = initpose->pose.pose.orientation.w;
-         double tempx = initpose->pose.pose.orientation.x;
-         double tempy= initpose->pose.pose.orientation.y;
-         double tempz = initpose->pose.pose.orientation.z;
+void initposeHandler(const geometry_msgs::PoseWithCovarianceStampedConstPtr& initpose)
+{
+    double tempw = initpose->pose.pose.orientation.w;
+    double tempx = initpose->pose.pose.orientation.x;
+    double tempy = initpose->pose.pose.orientation.y;
+    double tempz = initpose->pose.pose.orientation.z;
 
-         double x = initpose->pose.pose.position.x;
-         double y = initpose->pose.pose.position.y;
-         double z = initpose->pose.pose.position.z;
+    double x = initpose->pose.pose.position.x;
+    double y = initpose->pose.pose.position.y;
+    double z = initpose->pose.pose.position.z;
 
-         double rol,pit,yaw;
-         tf::Matrix3x3(tf::Quaternion(tempx, tempy, tempz, tempw)).getRPY(rol, pit,yaw);
+    double rol, pit, yaw;
+    tf::Matrix3x3(tf::Quaternion(tempx, tempy, tempz, tempw)).getRPY(rol, pit, yaw);
 
-        transWorldCurrent=pcl::getTransformation(x,y,z,rol,pit,yaw);
+    transWorldCurrent = pcl::getTransformation(x, y, z, rol, pit, yaw);
 
-        pcl::getTranslationAndEulerAngles(transWorldCurrent,currentX,currentY,currentZ,currentRoll,currentPitch,currentYaw);
+    pcl::getTranslationAndEulerAngles(transWorldCurrent, currentX, currentY, currentZ, currentRoll, currentPitch,
+                                      currentYaw);
 
+    std::cout << "********* set init pose  start**********" << std::endl;
+    std::cout << "now robot is in x " << currentX << " y " << currentY << "  z  " << currentZ << std::endl;
+    std::cout << " now robot is in  roll " << currentRoll << "  pitch " << currentPitch << "  yaw  " << currentYaw
+              << std::endl;
+    std::cout << "********* set init pose  end**********" << std::endl;
 
-        std::cout << "********* set init pose  start**********" << std::endl;
-        std::cout<<"now robot is in x "<<currentX<< " y "<< currentY<< "  z  "<<currentZ<<std::endl;
-        std::cout<<" now robot is in  roll "<<currentRoll<<"  pitch "<<currentPitch<<"  yaw  "<<currentYaw<<std::endl;
-        std::cout << "********* set init pose  end**********" << std::endl;
-
-        systemInitial= true;
+    systemInitial = true;
 }
 
-int main(int argc, char *argv[]){
-
+int main(int argc, char* argv[])
+{
     ros::init(argc, argv, "test_odom");
     ros::NodeHandle nh;
 
@@ -308,13 +312,15 @@ int main(int argc, char *argv[]){
     nh.param<double>("ndtResolution", ndtResolution, 0.1);
     nh.param<double>("ndtFitnessScoreThresh", ndtFitnessScoreThresh, 0.001);
 
-    ros::Subscriber subcameraCloud = nh.subscribe<sensor_msgs::PointCloud2>("/cameraCloudFrame", 100, cameraCloudHandler);
-    ros::Subscriber subInitpose = nh.subscribe<geometry_msgs::PoseWithCovarianceStamped>("/initialposeGive", 1,  initposeHandler,  ros::TransportHints().tcpNoDelay());
+    ros::Subscriber subcameraCloud =
+        nh.subscribe<sensor_msgs::PointCloud2>("/cameraCloudFrame", 100, cameraCloudHandler);
+    ros::Subscriber subInitpose = nh.subscribe<geometry_msgs::PoseWithCovarianceStamped>(
+        "/initialposeGive", 1, initposeHandler, ros::TransportHints().tcpNoDelay());
 
-    pubCurrentFeature = nh.advertise<sensor_msgs::PointCloud2>("/currentFeature", 100);
-    pubCurrentFeatureInWorld= nh.advertise<sensor_msgs::PointCloud2>("/currentFeatureInWorld", 100);
-    pubGlobalFeature=nh.advertise<sensor_msgs::PointCloud2>("/globalFeatureMap", 100);
-    pubCurrentPose = nh.advertise<nav_msgs::Odometry>("/currentPose", 100);
+    pubCurrentFeature        = nh.advertise<sensor_msgs::PointCloud2>("/currentFeature", 100);
+    pubCurrentFeatureInWorld = nh.advertise<sensor_msgs::PointCloud2>("/currentFeatureInWorld", 100);
+    pubGlobalFeature         = nh.advertise<sensor_msgs::PointCloud2>("/globalFeatureMap", 100);
+    pubCurrentPose           = nh.advertise<nav_msgs::Odometry>("/currentPose", 100);
 
     // load prior global map
     loadMap();
@@ -329,6 +335,6 @@ int main(int argc, char *argv[]){
         rate.sleep();
     }
 
-    std::cout<<"hello slam"<<std::endl;
+    std::cout << "hello slam" << std::endl;
     return 0;
 }

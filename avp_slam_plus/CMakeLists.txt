@@ -41,8 +41,8 @@ include_directories(
     include
     ${catkin_INCLUDE_DIRS}
     ${PCL_INCLUDE_DIRS}
-
-    ${OpenCV_INCLUDE_DIRS})
+    ${OpenCV_INCLUDE_DIRS}
+)
 
 catkin_package(
     CATKIN_DEPENDS geometry_msgs nav_msgs roscpp rospy std_msgs
@@ -63,6 +63,8 @@ add_executable(localization src/localization.cpp)
 target_link_libraries(localization ${catkin_LIBRARIES} ${OpenCV_LIBS} ${PCL_LIBRARIES} ${Boost_LIBRARIES})
 
 catkin_install_python(PROGRAMS scripts/Odometry.py
+
+    # DESTINATION ${CATKIN_PACKAGE_LIB_DESTINATION}
     DESTINATION ${CATKIN_PACKAGE_BIN_DESTINATION}
 )
 

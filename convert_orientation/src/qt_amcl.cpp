@@ -1,16 +1,17 @@
-#include "ros/ros.h"
 #include "geometry_msgs/Quaternion.h"
-#include <geometry_msgs/PoseStamped.h>
-#include <geometry_msgs/PoseWithCovarianceStamped.h>
+#include "ros/ros.h"
 #include "sensor_msgs/Imu.h"
 #include "tf/transform_datatypes.h"
-#include "math.h"
+
+#include <geometry_msgs/PoseStamped.h>
+#include <geometry_msgs/PoseWithCovarianceStamped.h>
 #include <nav_msgs/Odometry.h>
 
+#include "math.h"
 
 // ros::Publisher yaw_publisher;
 // ros::Subscriber quat_subscriber;
-ros::Publisher odom_yaw_publisher;
+ros::Publisher  odom_yaw_publisher;
 ros::Subscriber odom_quat_subscriber;
 // void QuaternionCallback(const sensor_msgs::Imu msg)
 // {
@@ -33,32 +34,33 @@ ros::Subscriber odom_quat_subscriber;
 void OdomQuaternionCallback(const geometry_msgs::PoseWithCovarianceStamped odom_msg)
 {
     double roll, pitch, yaw;
-    //Transform quaternion to rotation
-    tf::Quaternion quat(odom_msg.pose.pose.orientation.x, odom_msg.pose.pose.orientation.y, odom_msg.pose.pose.orientation.z, odom_msg.pose.pose.orientation.w);
+    // Transform quaternion to rotation
+    tf::Quaternion quat(odom_msg.pose.pose.orientation.x, odom_msg.pose.pose.orientation.y,
+                        odom_msg.pose.pose.orientation.z, odom_msg.pose.pose.orientation.w);
     tf::Matrix3x3(quat).getRPY(roll, pitch, yaw);
 
-    //Publiish the rotation values
+    // Publiish the rotation values
     geometry_msgs::PoseStamped rpy;
-    rpy.header = odom_msg.header;
+    rpy.header          = odom_msg.header;
     rpy.pose.position.x = roll;
     rpy.pose.position.y = pitch;
-    //rpy.pose.position.z = yaw; //yaw is shown as in rad
-    rpy.pose.position.z = yaw*180/M_PI; //yaw is shown as in degrees
+    // rpy.pose.position.z = yaw; //yaw is shown as in rad
+    rpy.pose.position.z = yaw * 180 / M_PI;  // yaw is shown as in degrees
     odom_yaw_publisher.publish(rpy);
     ROS_INFO("published odom yaw angle(degrees): yaw=%f", rpy.pose.position.z);
 }
 
-int main(int argc, char **argv)
+int main(int argc, char** argv)
 {
     ros::init(argc, argv, "quaternion");
     ros::NodeHandle n;
-    
+
     // Publisher and Subscriber (Subscribe IMU)
     // yaw_publisher = n.advertise<geometry_msgs::PoseStamped>("yaw_turtlebot", 1000);
     // quat_subscriber = n.subscribe("/imu", 1000, QuaternionCallback);
-    odom_yaw_publisher = n.advertise<geometry_msgs::PoseStamped>("amcl_yaw", 1000);
+    odom_yaw_publisher   = n.advertise<geometry_msgs::PoseStamped>("amcl_yaw", 1000);
     odom_quat_subscriber = n.subscribe("amcl_pose", 1000, OdomQuaternionCallback);
-    //Check for incoming quaternions
+    // Check for incoming quaternions
     ROS_INFO("waiting for quaternion");
     ros::spin();
     return 0;
