@@ -15,6 +15,7 @@
     </node>
 
     <!--TODO:不同  -->
+    <!-- https://blog.csdn.net/lzzzzzzm/article/details/119799802 -->
     <!-- run odometry -->
     <node name="Odometry" pkg="avp_slam_plus" type="Odometry.py" output="screen">
     </node>

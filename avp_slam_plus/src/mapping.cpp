@@ -162,8 +162,9 @@ void cameraCloudHandler(const sensor_msgs::PointCloud2ConstPtr& cameraCloudMsg)
             std::cout << "ndt locolization failed    the score is   " << ndt.getFitnessScore() << std::endl;
             return;
         }
-        else
+        else {
             transWorldCurrent = ndt.getFinalTransformation();
+        }
     }
 
     //   compute robot's pose with method of icp
@@ -183,8 +184,9 @@ void cameraCloudHandler(const sensor_msgs::PointCloud2ConstPtr& cameraCloudMsg)
             std::cout << "ICP locolization failed    the score is   " << icp.getFitnessScore() << std::endl;
             return;
         }
-        else
+        else {
             transWorldCurrent = icp.getFinalTransformation();
+        }
     }
 
     pcl::getTranslationAndEulerAngles(transWorldCurrent, currentX, currentY, currentZ, currentRoll, currentPitch,
