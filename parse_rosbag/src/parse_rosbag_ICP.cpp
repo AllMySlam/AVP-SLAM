@@ -1,35 +1,32 @@
-#include <iostream>
-#include <ros/ros.h>
-#include <pcl/common/transforms.h>
-#include <pcl/point_cloud.h>
-#include <pcl/point_types.h>
-#include <pcl/filters/voxel_grid.h>
-#include <pcl/kdtree/kdtree_flann.h>
-#include <pcl_conversions/pcl_conversions.h>
-#include <sensor_msgs/PointCloud2.h>
-#include <opencv/cv.h>
-#include <tf/transform_datatypes.h>
-#include <tf/transform_broadcaster.h>
-#include <pcl/filters/voxel_grid.h>
-#include <pcl/registration/icp.h>
-#include <pcl/registration/ndt.h>
+#include <geometry_msgs/PoseWithCovarianceStamped.h>
+#include <nav_msgs/Odometry.h>
+#include <opencv2/opencv.hpp>
 #include <pcl/common/common.h>
 #include <pcl/common/transforms.h>
-#include <pcl/search/impl/search.hpp>
+#include <pcl/filters/voxel_grid.h>
+#include <pcl/kdtree/kdtree_flann.h>
+#include <pcl/point_cloud.h>
+#include <pcl/point_types.h>
 #include <pcl/range_image/range_image.h>
+#include <pcl/registration/icp.h>
+#include <pcl/registration/ndt.h>
+#include <pcl/search/impl/search.hpp>
 #include <pcl/visualization/cloud_viewer.h>
-#include <tf/transform_datatypes.h>
-#include <tf/transform_broadcaster.h>
-#include <nav_msgs/Odometry.h>
-#include <geometry_msgs/PoseWithCovarianceStamped.h>
-#include <mutex>
-#include <queue>
-#include <cmath>
-#include <string>
+#include <pcl_conversions/pcl_conversions.h>
+#include <ros/ros.h>
 #include <rosbag/bag.h>
 #include <rosbag/view.h>
-#include <std_msgs/String.h>
+#include <sensor_msgs/PointCloud2.h>
 #include <std_msgs/Int32.h>
+#include <std_msgs/String.h>
+#include <tf/transform_broadcaster.h>
+#include <tf/transform_datatypes.h>
+
+#include <cmath>
+#include <iostream>
+#include <mutex>
+#include <queue>
+#include <string>
 
 typedef pcl::PointXYZRGB PointType;
 
@@ -74,7 +71,7 @@ int main(int argc, char *argv[]){
     bag.open(dataDir+fileName+".bag", rosbag::bagmode::Read);
 
     // file to save the vertex and edges to dedicated g2o file
-    ofstream myfile;
+    std::ofstream myfile;
     myfile.open (outDir+fileName+".g2o");
 
     // possible to look at point clouds?
@@ -100,7 +97,7 @@ int main(int argc, char *argv[]){
         if (s != NULL){
             std::string text = s->data;
             // myfile << text << std::endl;
-            
+
             size_t pos = text.find(" ");
             std::string name = text.substr(0, pos);
             if(name == "VERTEX_SE2"){
@@ -122,21 +119,18 @@ int main(int argc, char *argv[]){
                 currentYaw = std::stod(text);
 
                 vertexCount ++;
-                
             }
-            else if(name == "EDGE_SE2" && vertexCount>0){
-                text = text.erase(0,pos+1);
-                pos = text.find(" ");
-                //ignore time 1
-                text = text.erase(0,pos+1);
-                pos = text.find(" ");
-                //ignore time 2
-                text = text.erase(0,pos+1);
-                myfile << name << " " << edgeCount << " " << edgeCount+1 << " " << text << std::endl;
-                edgeCount ++;
+            else if (name == "EDGE_SE2" && vertexCount > 0) {
+                text = text.erase(0, pos + 1);
+                pos  = text.find(" ");
+                // ignore time 1
+                text = text.erase(0, pos + 1);
+                pos  = text.find(" ");
+                // ignore time 2
+                text = text.erase(0, pos + 1);
+                myfile << name << " " << edgeCount << " " << edgeCount + 1 << " " << text << std::endl;
+                edgeCount++;
             }
-            
-            
         }
 
         sensor_msgs::PointCloud2::ConstPtr input = m.instantiate<sensor_msgs::PointCloud2>();
@@ -161,7 +155,7 @@ int main(int argc, char *argv[]){
     int newEdgeCount = 0;
 
     static pcl::IterativeClosestPoint<PointType, PointType> icp;
-    icp.setMaxCorrespondenceDistance(20); 
+    icp.setMaxCorrespondenceDistance(20);
     icp.setMaximumIterations(100);
     icp.setTransformationEpsilon(1e-10);
     icp.setEuclideanFitnessEpsilon(0.001);
@@ -200,10 +194,10 @@ int main(int argc, char *argv[]){
             pcl::transformPointCloud (*cloud_i, *transformed_cloud_i, transform);
 
             icp.setInputSource(transformed_cloud_i);
-            
-            pcl::PointCloud<PointType>::Ptr transCurrentCloudInWorld(new pcl::PointCloud<PointType>());    
+
+            pcl::PointCloud<PointType>::Ptr transCurrentCloudInWorld(new pcl::PointCloud<PointType>());
             icp.align(*transCurrentCloudInWorld);
-            
+
             double icpScore = icp.getFitnessScore();
 
             //if the score is good then find the transformation
@@ -220,25 +214,21 @@ int main(int argc, char *argv[]){
 
                     std::cout<<"matched "<<i<<" at "<<pointCloudsX[i]<<","<<pointCloudsY[i]<<" and "<<j<<" at "<<pointCloudsX[j]<<","<<pointCloudsY[j]<<std::endl;
 
-                    
                     sensor_msgs::PointCloud2 cameraCloudFrameMsg;
                     pcl::toROSMsg(*transformed_cloud_i, cameraCloudFrameMsg);
-                    cameraCloudFrameMsg.header.stamp = ros::Time::now();
+                    cameraCloudFrameMsg.header.stamp    = ros::Time::now();
                     cameraCloudFrameMsg.header.frame_id = "/camera0_link";
                     pubCloudI.publish(cameraCloudFrameMsg);
 
                     pcl::toROSMsg(*transformed_cloud_j, cameraCloudFrameMsg);
-                    cameraCloudFrameMsg.header.stamp = ros::Time::now();
+                    cameraCloudFrameMsg.header.stamp    = ros::Time::now();
                     cameraCloudFrameMsg.header.frame_id = "/camera0_link";
                     pubCloudJ.publish(cameraCloudFrameMsg);
 
-                    do 
-                    {
+                    do {
                         cout << '\n' << "Press a key to continue...";
                     } while (std::cin.get() != '\n');
-                    
                 }
-                
             }
         }
     }
@@ -249,5 +239,3 @@ int main(int argc, char *argv[]){
 
     return 0;
 }
-
-

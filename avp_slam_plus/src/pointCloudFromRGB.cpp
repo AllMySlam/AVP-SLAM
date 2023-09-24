@@ -1,30 +1,26 @@
 //liuguitao created in 2021.12.22
 
-
-
-#include <iostream>
-#include <ros/ros.h>
+#include <Eigen/Dense>
+#include <cv_bridge/cv_bridge.h>
+#include <opencv2/core/core.hpp>
+#include <opencv2/core/eigen.hpp>
+#include <opencv2/opencv.hpp>
 #include <pcl/common/transforms.h>
-#include <pcl/point_cloud.h>
-#include <pcl/point_types.h>
 #include <pcl/filters/voxel_grid.h>
 #include <pcl/kdtree/kdtree_flann.h>
+#include <pcl/point_cloud.h>
+#include <pcl/point_types.h>
 #include <pcl_conversions/pcl_conversions.h>
+#include <ros/ros.h>
 #include <sensor_msgs/PointCloud2.h>
-#include <Eigen/Dense>
-#include <opencv2/core/eigen.hpp>
-#include <cv_bridge/cv_bridge.h>
-#include<opencv2/core/core.hpp>
-#include <opencv/cv.h>
-#include <opencv2/opencv.hpp>
-#include <tf/transform_datatypes.h>
 #include <tf/transform_broadcaster.h>
-#include <pcl/filters/voxel_grid.h>
+#include <tf/transform_datatypes.h>
+
+#include <cmath>
+#include <iostream>
 #include <mutex>
 #include <queue>
-#include <cmath>
 #include <vector>
-
 
 //  synchronism images of multi cameras according to timestamp
 //  generate point cloud according to IPM principle
@@ -260,8 +256,6 @@ void camera0ImageHandler(const sensor_msgs::ImageConstPtr& imageMsg){
     mBuf.lock();
     camera0ImageBuf.push(imageMsg);
     mBuf.unlock();
-    
-
 }
 
 void camera1ImageHandler(const sensor_msgs::ImageConstPtr& imageMsg){
@@ -310,83 +304,59 @@ void camera5ImageHandler(const sensor_msgs::ImageConstPtr& imageMsg){
 
 //   transform degree to quaternion
 void degToQuan(double& rotateDeg,Eigen::Quaterniond& q){
-    
-   geometry_msgs::Quaternion camera0xQuat=tf::createQuaternionMsgFromRollPitchYaw(0,rotateDeg, 0);
-   q.w()=camera0xQuat.w;
-   q.x()=camera0xQuat.x;
-   q.y()=camera0xQuat.y;
-   q.z()= camera0xQuat.z;
+  geometry_msgs::Quaternion camera0xQuat = tf::createQuaternionMsgFromRollPitchYaw(0, rotateDeg, 0);
+  q.w()                                  = camera0xQuat.w;
+  q.x()                                  = camera0xQuat.x;
+  q.y()                                  = camera0xQuat.y;
+  q.z()                                  = camera0xQuat.z;
 }
-
 
 //   compute inner and external parameter of cameras
-void systemInit(){
-  
-    R1R=Eigen::AngleAxisd(-rotateDeg1, Eigen::Vector3d(0,1,0)).toRotationMatrix();
-    T1R<<0,0,0;
+void systemInit()
+{
+  R1R = Eigen::AngleAxisd(-rotateDeg1, Eigen::Vector3d(0, 1, 0)).toRotationMatrix();
+  T1R << 0, 0, 0;
 
-    R2R=Eigen::AngleAxisd(-rotateDeg2, Eigen::Vector3d(0,1,0)).toRotationMatrix();
-    T2R<<0,0,0;
+  R2R = Eigen::AngleAxisd(-rotateDeg2, Eigen::Vector3d(0, 1, 0)).toRotationMatrix();
+  T2R << 0, 0, 0;
 
+  R3R = Eigen::AngleAxisd(-rotateDeg3, Eigen::Vector3d(0, 1, 0)).toRotationMatrix();
+  T3R << 0, 0, 0;
 
-    R3R=Eigen::AngleAxisd(-rotateDeg3, Eigen::Vector3d(0,1,0)).toRotationMatrix();
-    T3R<<0,0,0;
+  R4R = Eigen::AngleAxisd(-rotateDeg4, Eigen::Vector3d(0, 1, 0)).toRotationMatrix();
+  T4R << 0, 0, 0;
 
+  R5R = Eigen::AngleAxisd(-rotateDeg5, Eigen::Vector3d(0, 1, 0)).toRotationMatrix();
+  T5R << 0, 0, 0;
 
-    R4R=Eigen::AngleAxisd(-rotateDeg4, Eigen::Vector3d(0,1,0)).toRotationMatrix();
-    T4R<<0,0,0;
+  K0 = K;
+  RT0 << R0(0, 0), R0(0, 1), T0(0), R0(1, 0), R0(1, 1), T0(1), R0(2, 0), R0(2, 1), T0(2);
 
+  K1 = K;
+  R1 = R1R * R0;
+  T1 = R1R * T0 + T1R;
+  RT1 << R1(0, 0), R1(0, 1), T1(0), R1(1, 0), R1(1, 1), T1(1), R1(2, 0), R1(2, 1), T1(2);
 
-    R5R=Eigen::AngleAxisd(-rotateDeg5, Eigen::Vector3d(0,1,0)).toRotationMatrix();
-    T5R<<0,0,0;
+  K2 = K;
+  R2 = R2R * R0;
+  T2 = R2R * T0 + T2R;
+  RT2 << R2(0, 0), R2(0, 1), T2(0), R2(1, 0), R2(1, 1), T2(1), R2(2, 0), R2(2, 1), T2(2);
 
+  K3 = K;
+  R3 = R3R * R0;
+  T3 = R3R * T0 + T3R;
+  RT3 << R3(0, 0), R3(0, 1), T3(0), R3(1, 0), R3(1, 1), T3(1), R3(2, 0), R3(2, 1), T3(2);
 
-    K0=K;
-    RT0<<R0(0,0),R0(0,1),T0(0),
-         R0(1,0),R0(1,1),T0(1),
-         R0(2,0),R0(2,1),T0(2);
-  
+  K4 = K;
+  R4 = R4R * R0;
+  T4 = R4R * T0 + T4R;
+  RT4 << R4(0, 0), R4(0, 1), T4(0), R4(1, 0), R4(1, 1), T4(1), R4(2, 0), R4(2, 1), T4(2);
 
-    K1=K;
-    R1=R1R*R0;
-    T1=R1R*T0+T1R;
-    RT1<<R1(0,0),R1(0,1),T1(0),
-         R1(1,0),R1(1,1),T1(1),
-         R1(2,0),R1(2,1),T1(2);
-
-    K2=K;
-    R2=R2R*R0;
-    T2=R2R*T0+T2R;
-    RT2<<R2(0,0),R2(0,1),T2(0),
-         R2(1,0),R2(1,1),T2(1),
-         R2(2,0),R2(2,1),T2(2);
-
-    K3=K;
-    R3=R3R*R0;
-    T3=R3R*T0+T3R;
-    RT3<<R3(0,0),R3(0,1),T3(0),
-         R3(1,0),R3(1,1),T3(1),
-         R3(2,0),R3(2,1),T3(2);
-
-
-    K4=K;
-    R4=R4R*R0;
-    T4=R4R*T0+T4R;
-    RT4<<R4(0,0),R4(0,1),T4(0),
-         R4(1,0),R4(1,1),T4(1),
-         R4(2,0),R4(2,1),T4(2);
-
-    K5=K;
-    R5=R5R*R0;
-    T5=R5R*T0+T5R;
-    RT5<<R5(0,0),R5(0,1),T5(0),
-         R5(1,0),R5(1,1),T5(1),
-         R5(2,0),R5(2,1),T5(2);
-    
- 
+  K5 = K;
+  R5 = R5R * R0;
+  T5 = R5R * T0 + T5R;
+  RT5 << R5(0, 0), R5(0, 1), T5(0), R5(1, 0), R5(1, 1), T5(1), R5(2, 0), R5(2, 1), T5(2);
 }
-
-
 
 //   synchronism images of all camera
 void removeUnsynData(double& timeMax,double& timeCameraImage,std::queue<sensor_msgs::ImageConstPtr>& cameraImageBuf){
@@ -402,7 +372,7 @@ void removeUnsynData(double& timeMax,double& timeCameraImage,std::queue<sensor_m
 //    compute point cloud according to IPM principle
 void  calCloudFromImage(Eigen::Matrix3d& K, Eigen::Matrix3d& RT,const cv::Mat& image,pcl::PointCloud<PointType>::Ptr& cameraCloud){
         // std::cout << "flipped" << std::endl;
-        
+
         Eigen::Matrix3d KInv=K.inverse();
         Eigen::Matrix3d RTInv=RT.inverse();
        int row=image.rows;
@@ -412,92 +382,85 @@ void  calCloudFromImage(Eigen::Matrix3d& K, Eigen::Matrix3d& RT,const cv::Mat& i
        for(int i=0;i<row;i=i+imageRowIncrease){
            const uchar* p=image.ptr<uchar>(i);
            for(int j=0;j<col;j=j+imageColIncrease){
-      
-            int b=p[3*j];
-            int g=p[3*j+1];
-            int r=p[3*j+2];
-           //   there,for simplicity,just according to color,detect invalid area like sky area;
-           //   for real scene,should adapt machine learning method or other method detecting invalid area
-            if(b==skyColor || b==skyColor+1 || b==skyColor-1){
+            int b = p[3 * j];
+            int g = p[3 * j + 1];
+            int r = p[3 * j + 2];
+            //   there,for simplicity,just according to color,detect invalid area like sky area;
+            //   for real scene,should adapt machine learning method or other method detecting invalid area
+            if (b == skyColor || b == skyColor + 1 || b == skyColor - 1) {
                 break;
             }
-              
-               Eigen::Vector3d u;
-               u(0)=j;
-               u(1)=i;
-               u(2)=1;
-               Eigen::Vector3d u1;
-          
-               u1=KInv*u;
-               u1=RTInv*u1;
-               u1(0)=u1.x()/u1.z();
-               u1(1)=u1.y()/u1.z();
-               double dis=sqrt(u1.x()*u1.x()+u1.y()*u1.y());
-             
-                if(dis>cameraRealiableDis)
-                    continue;
-               
-               PointType po;
-               po.x = u1(0);
-	           po.y = -u1(1);
-	           po.z = 0;
-               po.r=r;
-               po.g=g;
-               po.b=b;
-               cameraCloud->push_back(po);
 
+            Eigen::Vector3d u;
+            u(0) = j;
+            u(1) = i;
+            u(2) = 1;
+            Eigen::Vector3d u1;
+
+            u1         = KInv * u;
+            u1         = RTInv * u1;
+            u1(0)      = u1.x() / u1.z();
+            u1(1)      = u1.y() / u1.z();
+            double dis = sqrt(u1.x() * u1.x() + u1.y() * u1.y());
+
+            if (dis > cameraRealiableDis)
+                continue;
+
+            PointType po;
+            po.x = u1(0);
+            po.y = -u1(1);
+            po.z = 0;
+            po.r = r;
+            po.g = g;
+            po.b = b;
+            cameraCloud->push_back(po);
            }
        }
 }
 
+int main(int argc, char* argv[])
+{
+       ros::init(argc, argv, "test_frameSyn");
+       ros::NodeHandle nh;
 
+       // get parameter from config file
+       nh.param<double>("rotateDeg1", rotateDeg1, -1.0471975511965976);
+       nh.param<double>("rotateDeg2", rotateDeg2, -2.0943951023931953);
+       nh.param<double>("rotateDeg3", rotateDeg3, -3.141592653589793);
+       nh.param<double>("rotateDeg4", rotateDeg4, 2.0943951023931953);
+       nh.param<double>("rotateDeg5", rotateDeg5, 1.0471975511965976);
+       nh.param<float>("pointCloudLeafSize", pointCloudLeafSize, 0.1);
+       nh.param<int>("imageRowIncrease", imageRowIncrease, 1);
+       nh.param<int>("imageColIncrease", imageColIncrease, 2);
+       nh.param<double>("cameraRealiableDis", cameraRealiableDis, 8.0);
+       nh.param<int>("skyColor", skyColor, 178);
 
+       std::vector<double> KDouble, R0Double, T0Double;
+       nh.param<std::vector<double>>("K", KDouble, std::vector<double>());
+       nh.param<std::vector<double>>("R0", R0Double, std::vector<double>());
+       nh.param<std::vector<double>>("T0", T0Double, std::vector<double>());
+       K  = Eigen::Map<const Eigen::Matrix<double, -1, -1, Eigen::RowMajor>>(KDouble.data(), 3, 3);
+       R0 = Eigen::Map<const Eigen::Matrix<double, -1, -1, Eigen::RowMajor>>(R0Double.data(), 3, 3);
+       T0 = Eigen::Map<const Eigen::Matrix<double, -1, -1, Eigen::RowMajor>>(T0Double.data(), 3, 1);
 
-int main(int argc, char *argv[]){
+       ros::Subscriber subCamera0Image = nh.subscribe("/camera0/color/image_raw", 100, camera0ImageHandler);
+       ros::Subscriber subCamera1Image = nh.subscribe("/camera1/color/image_raw", 100, camera1ImageHandler);
+       ros::Subscriber subCamera2Image = nh.subscribe("/camera2/color/image_raw", 100, camera2ImageHandler);
+       ros::Subscriber subCamera3Image = nh.subscribe("/camera3/color/image_raw", 100, camera3ImageHandler);
+       ros::Subscriber subCamera4Image = nh.subscribe("/camera4/color/image_raw", 100, camera4ImageHandler);
+       ros::Subscriber subCamera5Image = nh.subscribe("/camera5/color/image_raw", 100, camera5ImageHandler);
 
-   ros::init(argc, argv, "test_frameSyn");
-   ros::NodeHandle nh;
+       pubCameraCloudFrame = nh.advertise<sensor_msgs::PointCloud2>("/cameraCloudFrame", 100);
 
-  // get parameter from config file 
-   nh.param<double>("rotateDeg1", rotateDeg1, -1.0471975511965976);
-   nh.param<double>("rotateDeg2", rotateDeg2, -2.0943951023931953);
-   nh.param<double>("rotateDeg3", rotateDeg3, -3.141592653589793);
-   nh.param<double>("rotateDeg4", rotateDeg4, 2.0943951023931953);
-   nh.param<double>("rotateDeg5", rotateDeg5, 1.0471975511965976);
-   nh.param<float>("pointCloudLeafSize", pointCloudLeafSize, 0.1);
-   nh.param<int>("imageRowIncrease", imageRowIncrease, 1);
-   nh.param<int>("imageColIncrease", imageColIncrease, 2);
-   nh.param<double>("cameraRealiableDis", cameraRealiableDis, 8.0);
-   nh.param<int>("skyColor", skyColor, 178);
+       //   compute inner and external parameter of cameras
+       systemInit();
 
-   
-   std::vector<double> KDouble,R0Double,T0Double;
-   nh.param<std::vector<double>>("K", KDouble, std::vector<double>());
-   nh.param<std::vector<double>>("R0", R0Double, std::vector<double>());
-   nh.param<std::vector<double>>("T0", T0Double, std::vector<double>());
-   K = Eigen::Map<const Eigen::Matrix<double, -1, -1, Eigen::RowMajor>>(KDouble.data(), 3, 3);
-   R0 = Eigen::Map<const Eigen::Matrix<double, -1, -1, Eigen::RowMajor>>(R0Double.data(), 3, 3);
-   T0 = Eigen::Map<const Eigen::Matrix<double, -1, -1, Eigen::RowMajor>>(T0Double.data(), 3, 1);
-
-
-   ros::Subscriber subCamera0Image = nh.subscribe("/camera0/color/image_raw", 100, camera0ImageHandler);
-   ros::Subscriber subCamera1Image = nh.subscribe("/camera1/color/image_raw", 100, camera1ImageHandler);
-   ros::Subscriber subCamera2Image = nh.subscribe("/camera2/color/image_raw", 100, camera2ImageHandler);
-   ros::Subscriber subCamera3Image = nh.subscribe("/camera3/color/image_raw", 100, camera3ImageHandler);
-   ros::Subscriber subCamera4Image = nh.subscribe("/camera4/color/image_raw", 100, camera4ImageHandler);
-   ros::Subscriber subCamera5Image = nh.subscribe("/camera5/color/image_raw", 100, camera5ImageHandler);
-
-   pubCameraCloudFrame = nh.advertise<sensor_msgs::PointCloud2>("/cameraCloudFrame", 100);
-
-   //   compute inner and external parameter of cameras
-   systemInit();
-   
-
-   ros::Rate rate(100);
-    while (ros::ok()) {
-        ros::spinOnce();
-        //  synchronism images of multi cameras according to timestamp
-        if(!camera0ImageBuf.empty() && !camera1ImageBuf.empty() && !camera2ImageBuf.empty() && !camera3ImageBuf.empty() && !camera4ImageBuf.empty() && !camera5ImageBuf.empty()){
+       ros::Rate rate(100);
+       while (ros::ok()) {
+           ros::spinOnce();
+           //  synchronism images of multi cameras according to timestamp
+           if (!camera0ImageBuf.empty() && !camera1ImageBuf.empty() && !camera2ImageBuf.empty() &&
+               !camera3ImageBuf.empty() && !camera4ImageBuf.empty() && !camera5ImageBuf.empty()) {
             timeCamera0Image=camera0ImageBuf.front()->header.stamp.toSec();
             timeCamera1Image=camera1ImageBuf.front()->header.stamp.toSec();
             timeCamera2Image=camera2ImageBuf.front()->header.stamp.toSec();
@@ -526,9 +489,7 @@ int main(int argc, char *argv[]){
 
             }
 
-            
-            std::cout<<"image is  syn"<<std::endl;
-           
+            std::cout << "image is  syn" << std::endl;
 
             mBuf.lock();
             image0_ptr = cv_bridge::toCvShare(camera0ImageBuf.front());
@@ -579,8 +540,7 @@ int main(int argc, char *argv[]){
             camera5Cloud->clear();
             calCloudFromImage(K5,RT5,image5_ptr->image,camera5Cloud);
 
-            
-            // filter point cloud, decrease number of point cloud 
+            // filter point cloud, decrease number of point cloud
             pcl::PointCloud<PointType> camera0CloudDS;
             pcl::VoxelGrid<PointType> downSizeFilter;
             downSizeFilter.setInputCloud(camera0Cloud);

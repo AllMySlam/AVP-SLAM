@@ -22,19 +22,19 @@ find_package(catkin REQUIRED COMPONENTS
 
 find_package(Eigen3 REQUIRED)
 find_package(PCL REQUIRED)
-find_package(OpenCV 3.2.0  REQUIRED)
+find_package(OpenCV REQUIRED)
 
 include_directories(
-  include
-	${catkin_INCLUDE_DIRS} 
-  ${PCL_INCLUDE_DIRS}
+    include
+    ${catkin_INCLUDE_DIRS}
+    ${PCL_INCLUDE_DIRS}
 
-  ${OpenCV_INCLUDE_DIRS})
+    ${OpenCV_INCLUDE_DIRS})
 
 catkin_package(
-  CATKIN_DEPENDS geometry_msgs nav_msgs roscpp rospy std_msgs
-     DEPENDS EIGEN3 PCL 
-   INCLUDE_DIRS include
+    CATKIN_DEPENDS geometry_msgs nav_msgs roscpp rospy std_msgs
+    DEPENDS EIGEN3 PCL
+    INCLUDE_DIRS include
 )
 
 add_executable(parse_rosbag_ICP src/parse_rosbag_ICP.cpp)
